@@ -1,5 +1,5 @@
 'use strict'
-//圧縮方： zip -r -D ../test.zip *
+//圧縮方： zip -r -D ../lambda_practice.zip *
 const axios = require("axios");
 const recaptcha_secret_key = process.env['recaptcha_secret_key'];
 
@@ -19,6 +19,10 @@ let recaptcha = {
             }
         }
     },
+    checkResult: function (verifyResult) {
+        return verifyResult.data.success;
+    },
+    
     fail: function (response, verifyResult){
         response.statusCode = verifyResult.status;
         response.body.result = false;
@@ -29,7 +33,7 @@ let recaptcha = {
 
 exports.handler = async (event) => {
 
-    var response = {
+    let response = {
         statusCode: 404,
         body: {
             result: false,
@@ -38,10 +42,10 @@ exports.handler = async (event) => {
         }
     }
 
-    //Bot対策
-    var verifyResult = await axios(recaptcha.getRecaptchaBody(event["bot_token"]));
-    if (verifyResult.data.success === false) {
-        return recaptcha.fail(response, verifyResult);
+    //スパム対策
+    let result = await axios(recaptcha.getRecaptchaBody(event["bot_token"]));
+    if (recaptcha.checkResult(result) === false) {
+        return recaptcha.fail(response, result);
     }
 
     // TODO implement
