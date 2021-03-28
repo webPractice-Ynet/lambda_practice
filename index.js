@@ -54,11 +54,19 @@ let mail = (function (mailgun, domain) {
             `;
             return  this;
         },
-        send: function () {
-            return mailgun.messages()
+        send: async function () {
+            let result = false;
+            await mailgun.messages()
                 .send(mail_content)
-                .then(function(body) {return body})
+                .then(function(body) {result = true; return body})
                 .catch(function(err) {return err})
+            
+            return  result;
+        },
+        fail: function (response) {
+            response.body.date.message = "メール送信エラー";
+            response.statusCode = 500;
+            return  response;
         }
     };
 })(mailgun, domain);
@@ -89,22 +97,24 @@ exports.handler = async (event) => {
     }
     result = null;
 
-    // //スパム対策
-    // result = await axios(recaptcha.getRecaptchaBody(event["bot_token"]));
-    // if (recaptcha.checkResult(result) === false) {
-    //     return recaptcha.fail(response, result);
-    // }
+    //スパム対策
+    result = await axios(recaptcha.getRecaptchaBody(event["bot_token"]));
+    if (recaptcha.checkResult(result) === false) {
+        return recaptcha.fail(response, result);
+    }
     
     form_data = getFormData(event);
     
     //メール送信
     result = await mail.set(form_data).send();
-    console.log(result);
     
-    // TODO implement
+    if (result === false) {
+        return mail.fail(response);
+    }
+    
     response.statusCode = 200;
     response.body = {"result": true};
-    // response.body = JSON.stringify('Hello from Lambda!');
+    
     return response;
 };
 
