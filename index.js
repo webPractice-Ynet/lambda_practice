@@ -3,6 +3,12 @@
 const axios = require("axios");
 const recaptcha_secret_key = process.env['recaptcha_secret_key'];
 
+
+// Mailgun
+const domain = 'oi-kaze.com';
+const mailgun_secret_key = process.env['mailgun_secret_key'];
+const mailgun = require('mailgun-js')({ apiKey:mailgun_secret_key, domain:domain });
+
 let recaptcha = {
 
     getRecaptchaBody: function (token) {
@@ -29,11 +35,51 @@ let recaptcha = {
         response.body.message = 'recaptcha failed';
         return response;
     }
+};
+
+let mail = (function (mailgun, domain) {
+    let mail_content;
+    mail_content = {
+        from: `test太郎 <contact@${domain}>`,
+        subject: `送信テスト`,
+        to: null,
+        text: null
+    };
+
+    return {
+        set: function (form_data) {
+            mail_content.to = `${form_data.name}様 <${form_data.email}>`;
+            mail_content.text = `
+            テストメールです。
+            `;
+            return  this;
+        },
+        send: function () {
+            return mailgun.messages()
+                .send(mail_content)
+                .then(function(body) {return body})
+                .catch(function(err) {return err})
+        }
+    };
+})(mailgun, domain);
+
+function getFormData(event){
+    // formのキー
+    const keys = ["name", "email"];
+
+    var form_data = {};
+    var key = "";
+    for(var i = 0; i < Object.keys(keys).length; ++i) {
+        key = keys[i];
+        form_data[key] = event[key];
+    }
+    return form_data;
 }
 
 exports.handler = async (event) => {
-
-    let response = {
+    let response, result, form_data;
+    
+    response = {
         statusCode: 404,
         body: {
             result: false,
@@ -41,17 +87,24 @@ exports.handler = async (event) => {
             data: {}
         }
     }
+    result = null;
 
-    //スパム対策
-    let result = await axios(recaptcha.getRecaptchaBody(event["bot_token"]));
-    if (recaptcha.checkResult(result) === false) {
-        return recaptcha.fail(response, result);
-    }
-
+    // //スパム対策
+    // result = await axios(recaptcha.getRecaptchaBody(event["bot_token"]));
+    // if (recaptcha.checkResult(result) === false) {
+    //     return recaptcha.fail(response, result);
+    // }
+    
+    form_data = getFormData(event);
+    
+    //メール送信
+    result = await mail.set(form_data).send();
+    console.log(result);
+    
     // TODO implement
     response.statusCode = 200;
-    response.body = JSON.stringify('Hello from Lambda!');
-    
+    response.body = {"result": true};
+    // response.body = JSON.stringify('Hello from Lambda!');
     return response;
 };
 
