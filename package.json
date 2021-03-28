@@ -1,0 +1,11 @@
+{
+  "name": "lambda_practice",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/webPractice-Ynet/lambda_practice.git",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "mailgun-js": "^0.22.0"
+  }
+}
